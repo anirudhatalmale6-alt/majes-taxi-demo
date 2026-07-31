@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>TaxiMajes Conductor · Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1d2530;--line:#2a3340;--txt:#eef2f7;--sub:#93a1b3;--gold:#ffcf3f;--brand2:#ffb300;--green:#25d366;--danger:#ff5a5a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+  header{position:absolute;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;gap:10px;padding:10px 14px;pointer-events:none}
+  .logo{display:flex;align-items:center;gap:8px;background:#0e1116cc;border:1px solid var(--line);padding:7px 11px;border-radius:999px;pointer-events:auto;backdrop-filter:blur(6px)}
+  .logo .dot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--gold),var(--brand2));display:grid;place-items:center;font-size:15px}
+  .logo b{font-size:14px}.logo small{color:var(--sub);font-size:10.5px}
+  .who{margin-left:auto;pointer-events:auto;display:flex;align-items:center;gap:8px;background:#0e1116cc;border:1px solid var(--line);padding:5px 10px 5px 6px;border-radius:999px;backdrop-filter:blur(6px)}
+  .who .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ffd766,#ff9f1a);color:#111;font-weight:800;display:grid;place-items:center;font-size:13px}
+  .who .nm{font-size:12.5px}.who .st{font-size:10px;color:var(--green)}
+  #map{flex:1;z-index:1;background:#0b0e12}
+  .leaflet-container{background:#0b0e12}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:800;background:var(--panel);border-top-left-radius:20px;border-top-right-radius:20px;box-shadow:0 -14px 40px rgba(0,0,0,.5);padding:12px 16px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .grab{width:40px;height:4px;border-radius:99px;background:#3a4553;margin:0 auto 12px}
+  .balance{display:flex;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+  .balance .ic{font-size:24px}
+  .balance .txt{flex:1}
+  .balance .lbl{font-size:11.5px;color:var(--sub)}
+  .balance .amt{font-size:22px;font-weight:800}
+  .balance .amt small{font-size:14px;color:var(--sub)}
+  .balance .note{font-size:10.5px;color:var(--sub);margin-top:2px}
+  .recharge{border:1px solid var(--gold);background:#2a2410;color:var(--gold);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer}
+  h2{margin:0 0 10px;font-size:17px}
+  .sub{font-size:12.5px;color:var(--sub);margin:-4px 0 12px}
+  .btn{width:100%;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;color:#111;background:linear-gradient(135deg,var(--gold),var(--brand2));transition:transform .1s}
+  .btn:active{transform:scale(.99)}
+  .btn.off{background:linear-gradient(135deg,#3a4553,#2a3340);color:#fff}
+  .btn.green{background:linear-gradient(135deg,#28d16c,#1fae59);color:#052}
+  .btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .status-toggle{display:flex;gap:8px;margin-bottom:12px}
+  .stbtn{flex:1;text-align:center;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub)}
+  .stbtn.on{border-color:var(--green);color:var(--green);background:#0f2a1a}
+  .scan{text-align:center;padding:4px 0}
+  .scan .rad{width:74px;height:74px;margin:2px auto 10px;position:relative}
+  .scan .rad span{position:absolute;inset:0;border-radius:50%;border:2px solid var(--green);animation:pulse 1.6s ease-out infinite;opacity:0}
+  .scan .rad span:nth-child(2){animation-delay:.5s}.scan .rad span:nth-child(3){animation-delay:1s}
+  .scan .rad .c{position:absolute;inset:0;display:grid;place-items:center;font-size:30px}
+  @keyframes pulse{0%{transform:scale(.3);opacity:.9}100%{transform:scale(1);opacity:0}}
+  /* incoming request */
+  .req{border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#221d0a,#161b22);padding:14px;margin-bottom:6px;animation:pop .3s ease}
+  @keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+  .req .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .req .pax{display:flex;align-items:center;gap:9px}
+  .req .pax .av{width:38px;height:38px;border-radius:50%;background:#33405a;display:grid;place-items:center;font-weight:700}
+  .req .offer{text-align:right}
+  .req .offer .l{font-size:10.5px;color:var(--sub)}
+  .req .offer .p{font-size:24px;font-weight:800;color:var(--gold)}
+  .route{font-size:13px;margin:8px 0}
+  .route .r{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .route .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .route .dot.a{background:var(--green)}.route .dot.b{background:var(--danger)}
+  .meta{display:flex;gap:14px;font-size:12px;color:var(--sub);margin:8px 0 10px}
+  .bar{height:5px;border-radius:99px;background:#33405a;overflow:hidden;margin-bottom:10px}
+  .bar i{display:block;height:100%;background:var(--gold);width:100%;transition:width 1s linear}
+  .reqbtns{display:flex;gap:10px}
+  .reqbtns .btn{flex:1;padding:13px;font-size:15px}
+  .commsrow{display:flex;gap:8px;margin:12px 0}
+  .comm{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:600;font-size:13px;cursor:pointer}
+  .paxcard{display:flex;align-items:center;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:12px}
+  .paxcard .av{width:44px;height:44px;border-radius:50%;background:#33405a;display:grid;place-items:center;font-weight:700;font-size:17px}
+  .earn{background:linear-gradient(135deg,#12331f,#0f2a1a);border:1px solid #1e5236;border-radius:12px;padding:12px;margin-bottom:12px}
+  .earn .row{display:flex;justify-content:space-between;font-size:13.5px;margin:3px 0}
+  .earn .big{font-size:20px;font-weight:800;color:#8ff0b6}
+  .stars{display:flex;gap:6px;justify-content:center;font-size:30px;margin:8px 0 14px;cursor:pointer}
+  .toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:1000;background:#0e1116e6;border:1px solid var(--line);color:var(--txt);padding:10px 15px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:88%;text-align:center}
+  .toast.show{opacity:1}
+  .step{display:none}.step.active{display:block}
+  .switch{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));right:14px;z-index:850;background:#0e1116cc;border:1px solid var(--line);color:var(--gold);text-decoration:none;font-size:12px;padding:8px 12px;border-radius:999px;backdrop-filter:blur(6px)}
+  .carlabel{background:#111;color:#ffcf3f;border:1px solid #ffcf3f;border-radius:6px;padding:1px 5px;font-size:11px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo"><span class="dot">🚕</span><b>TaxiMajes</b><small>Conductor</small></div>
+    <div class="who"><span class="av">C</span><div><div class="nm">Carlos M.</div><div class="st" id="whoSt">Desconectado</div></div></div>
+  </header>
+  <div id="map"></div>
+  <div class="toast" id="toast"></div>
+  <a class="switch" href="index.html">🧍 Ver app del pasajero</a>
+
+  <div class="sheet">
+    <div class="grab"></div>
+
+    <!-- OFFLINE -->
+    <section class="step active" id="off">
+      <div class="balance">
+        <span class="ic">💰</span>
+        <div class="txt">
+          <div class="lbl">Tu saldo</div>
+          <div class="amt"><small>S/</small> <span id="bal">20.00</span></div>
+          <div class="note">Cada carrera descuenta S/0.50 de comisión</div>
+        </div>
+        <button class="recharge" id="rech1">Recargar</button>
+      </div>
+      <h2>Estás desconectado</h2>
+      <p class="sub">Conéctate para empezar a recibir solicitudes de carrera cerca de ti en El Pedregal.</p>
+      <button class="btn green" id="goOnline">Conectarme y recibir carreras</button>
+    </section>
+
+    <!-- ONLINE / SCANNING -->
+    <section class="step" id="online">
+      <div class="status-toggle">
+        <div class="stbtn on" data-st="Disponible">Disponible</div>
+        <div class="stbtn" data-st="Ocupado">Ocupado</div>
+        <div class="stbtn" data-st="Desconectado" id="goOff">Desconectarme</div>
+      </div>
+      <div class="scan">
+        <div class="rad"><span></span><span></span><span></span><div class="c">🚕</div></div>
+        <h2 style="text-align:center;margin-bottom:4px">Disponible · buscando pasajeros</h2>
+        <p class="sub" style="text-align:center">Saldo S/<span class="balm">20.00</span> · te avisaremos cuando entre una carrera.</p>
+      </div>
+    </section>
+
+    <!-- INCOMING REQUEST -->
+    <section class="step" id="req">
+      <div class="req">
+        <div class="top">
+          <div class="pax"><span class="av">M</span><div><div style="font-weight:700">María L.</div><div style="font-size:11.5px;color:var(--sub)">⭐ 4.8 · Efectivo</div></div></div>
+          <div class="offer"><div class="l">Ofrece</div><div class="p">S/ 8.0</div></div>
+        </div>
+        <div class="route">
+          <div class="r"><span class="dot a"></span> Recojo: Plaza de Armas</div>
+          <div class="r"><span class="dot b"></span> Destino: Terminal Terrestre</div>
+        </div>
+        <div class="meta"><span>📍 3.2 km al destino</span><span>🕐 ~9 min</span><span>🚗 1.1 km de ti</span></div>
+        <div class="bar"><i id="reqBar"></i></div>
+        <div class="reqbtns">
+          <button class="btn off" id="reject">Rechazar</button>
+          <button class="btn green" id="accept">Aceptar S/8.0</button>
+        </div>
+      </div>
+      <p class="sub" style="text-align:center;margin-top:10px">Aceptar descuenta S/0.50 de tu saldo (comisión).</p>
+    </section>
+
+    <!-- TO PICKUP -->
+    <section class="step" id="pickup">
+      <h2>Recoge a María L. 🚗</h2>
+      <p class="sub">Dirígete a la Plaza de Armas. La pasajera te está esperando.</p>
+      <div class="paxcard"><span class="av">M</span><div style="flex:1"><div style="font-weight:700">María L.</div><div style="font-size:12px;color:var(--sub)">Recojo: Plaza de Armas · Paga S/8.0 efectivo</div></div><div style="color:var(--gold);font-weight:700">⭐4.8</div></div>
+      <div class="commsrow">
+        <div class="comm" id="nav">🧭 Navegar</div>
+        <div class="comm" id="chat">💬 Chat</div>
+        <div class="comm" id="call">📞 Llamar</div>
+      </div>
+      <button class="btn green" id="arrived">Recogí a la pasajera</button>
+    </section>
+
+    <!-- ON TRIP -->
+    <section class="step" id="trip">
+      <h2>Viaje en curso 🛣️</h2>
+      <p class="sub">Llevando a María al Terminal Terrestre.</p>
+      <div class="paxcard"><span class="av">M</span><div style="flex:1"><div style="font-weight:700">María L.</div><div style="font-size:12px;color:var(--sub)">Destino: Terminal Terrestre</div></div><div style="color:#8ff0b6;font-weight:800">S/8.0</div></div>
+      <button class="btn" id="finish">Finalizar viaje</button>
+    </section>
+
+    <!-- FINISH / RATE -->
+    <section class="step" id="done">
+      <h2 style="text-align:center">¡Viaje completado! 🎉</h2>
+      <div class="earn">
+        <div class="row"><span>Cobras a la pasajera (efectivo)</span><b>S/ 8.00</b></div>
+        <div class="row"><span>Comisión de la app</span><span>– S/ 0.50</span></div>
+        <div class="row" style="border-top:1px solid #1e5236;padding-top:6px;margin-top:6px"><span>Ganancia neta</span><span class="big">S/ 7.50</span></div>
+      </div>
+      <p class="sub" style="text-align:center">Califica a tu pasajera</p>
+      <div class="stars" id="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+      <button class="btn green" id="next">Listo · seguir disponible</button>
+    </section>
+
+    <!-- LOW BALANCE -->
+    <section class="step" id="low">
+      <div class="balance" style="border-color:var(--danger)">
+        <span class="ic">⚠️</span>
+        <div class="txt"><div class="lbl" style="color:var(--danger)">Saldo insuficiente</div><div class="amt"><small>S/</small> <span class="balm">0.00</span></div><div class="note">Recarga para seguir recibiendo carreras.</div></div>
+      </div>
+      <h2>Sin saldo para comisión</h2>
+      <p class="sub">Cuando tu saldo llega a cero dejas de recibir carreras. Recarga por Yape o transferencia y el administrador la valida.</p>
+      <button class="btn" id="rech2">Recargar saldo</button>
+    </section>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const ORIGIN=[-16.3627,-72.1908], PLAZA=[-16.3648,-72.1935], TERMINAL=[-16.3705,-72.1849];
+let map, me, paxMarker, line, bal=20.00, reqTimer, barTimer, chosenStars=5;
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+function show(id){document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function setBal(v){bal=Math.max(0,+v.toFixed(2));$('bal').textContent=bal.toFixed(2);document.querySelectorAll('.balm').forEach(e=>e.textContent=bal.toFixed(2));}
+function pinIcon(c){return L.divIcon({html:`<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5)"></div>`,className:'',iconSize:[16,16],iconAnchor:[8,14]});}
+function carIcon(){return L.divIcon({html:'🚕',className:'',iconSize:[28,28],iconAnchor:[14,14]});}
+
+function initMap(){
+  map=L.map('map',{zoomControl:false,attributionControl:true}).setView(ORIGIN,14);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'&copy; OSM · &copy; CARTO'}).addTo(map);
+  me=L.marker(ORIGIN,{icon:carIcon()}).addTo(map).bindTooltip('Tú',{direction:'top',offset:[0,-12]});
+}
+async function drawRoute(a,b,color){
+  if(line) map.removeLayer(line);
+  let coords=[a,b];
+  try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`);
+    const j=await r.json(); if(j.routes&&j.routes[0]) coords=j.routes[0].geometry.coordinates.map(p=>[p[1],p[0]]);}catch(e){}
+  line=L.polyline(coords,{color:color||'#ffcf3f',weight:5,opacity:.9}).addTo(map);
+  map.fitBounds(line.getBounds(),{paddingTopLeft:[30,80],paddingBottomRight:[30,300]});
+  return coords;
+}
+function moveCar(coords,done){
+  let i=0; clearInterval(window._mv);
+  window._mv=setInterval(()=>{ if(i>=coords.length){clearInterval(window._mv);done&&done();return;} me.setLatLng(coords[i]); i+=Math.max(1,Math.floor(coords.length/40)); },70);
+}
+
+function goOnline(){ show('online'); $('whoSt').textContent='Disponible'; setTimeout(incoming,2600); }
+function incoming(){
+  show('req'); toast('🔔 ¡Nueva carrera! María ofrece S/8.0');
+  if(paxMarker) map.removeLayer(paxMarker);
+  paxMarker=L.marker(PLAZA,{icon:pinIcon('#25d366')}).addTo(map).bindTooltip('Pasajera',{direction:'top',offset:[0,-12]});
+  map.fitBounds(L.latLngBounds([ORIGIN,PLAZA]).pad(.4),{paddingBottomRight:[20,300]});
+  // 15s countdown bar
+  let pct=100; $('reqBar').style.width='100%';
+  clearInterval(barTimer);
+  barTimer=setInterval(()=>{ pct-=100/15; $('reqBar').style.width=Math.max(0,pct)+'%'; if(pct<=0){clearInterval(barTimer); reject(true);} },1000);
+}
+function reject(auto){ clearInterval(barTimer); if(paxMarker)map.removeLayer(paxMarker); show('online'); $('whoSt').textContent='Disponible'; toast(auto?'Carrera expiró':'Carrera rechazada'); setTimeout(incoming,3200); }
+async function accept(){
+  clearInterval(barTimer);
+  setBal(bal-0.50); $('whoSt').textContent='Ocupado';
+  toast('✅ Aceptaste · comisión S/0.50 descontada (saldo S/'+bal.toFixed(2)+')');
+  show('pickup');
+  const c=await drawRoute(ORIGIN,PLAZA,'#25d366'); moveCar(c);
+}
+async function arrived(){ show('trip'); toast('Pasajera a bordo'); const c=await drawRoute(PLAZA,TERMINAL,'#ffcf3f'); moveCar(c); }
+function finish(){ show('done'); }
+function next(){
+  if(bal<0.50){ show('low'); $('whoSt').textContent='Desconectado'; toast('Saldo agotado — recarga para seguir'); return; }
+  show('online'); $('whoSt').textContent='Disponible'; toast('Disponible de nuevo'); setTimeout(incoming,3000);
+}
+function recharge(){ setBal(bal+20); toast('✅ Recarga S/20 validada por el admin (demo)'); show('online'); $('whoSt').textContent='Disponible'; setTimeout(incoming,2600); }
+
+window.addEventListener('load',()=>{
+  initMap();
+  $('goOnline').onclick=goOnline;
+  $('goOff').onclick=()=>{show('off');$('whoSt').textContent='Desconectado';};
+  $('accept').onclick=accept;
+  $('reject').onclick=()=>reject(false);
+  $('arrived').onclick=arrived;
+  $('finish').onclick=finish;
+  $('next').onclick=next;
+  $('rech1').onclick=recharge; $('rech2').onclick=recharge;
+  $('nav').onclick=()=>toast('🧭 Navegación con Google Maps (demo)');
+  $('chat').onclick=()=>toast('💬 Chat con la pasajera (demo)');
+  $('call').onclick=()=>toast('📞 Llamada protegida, sin mostrar tu número (demo)');
+  document.querySelectorAll('.status-toggle .stbtn[data-st]').forEach(b=>{ if(b.id!=='goOff') b.onclick=()=>{ document.querySelectorAll('.status-toggle .stbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); $('whoSt').textContent=b.dataset.st; }; });
+  const stars=$('stars').children;
+  Array.from(stars).forEach((s,i)=>s.onclick=()=>{ chosenStars=i+1; Array.from(stars).forEach((x,j)=>x.style.color=j<=i?'#ffcf3f':'#33405a'); });
+});
+</script>
+</body>
+</html>
